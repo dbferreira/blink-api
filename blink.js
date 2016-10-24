@@ -1,4 +1,9 @@
 var rp = require('request-promise');
+var fs = require('fs');
+
+let credentials = JSON.parse(
+    fs.readFileSync('credentials.json')
+);
 
 // http://curl.trillworks.com/#node
 // https://github.com/MattTW/BlinkMonitorProtocol
@@ -22,8 +27,8 @@ function login() {
 			'Content-Type': 'application/json'
 		},
 		body: JSON.stringify({
-			email: 'e@gmail.com',
-			password: 'pass',
+			email: credentials.email,
+			password: credentials.password,
 			client_specifier: 'iPhone 9.2 | 2.2 | 222'
 		})
 	};
