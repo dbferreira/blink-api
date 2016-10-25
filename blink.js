@@ -5,27 +5,16 @@ let credentials = JSON.parse(
 	fs.readFileSync('credentials.json')
 );
 
-// http://curl.trillworks.com/#node
+const hostname = "prod.immedia-semi.com";
+
 // https://github.com/MattTW/BlinkMonitorProtocol
-
-// curl -H "Host: prod.immedia-semi.com" -H "TOKEN_AUTH: authtoken from login" --compressed https://prod.immedia-semi.com/networks
-// curl - H "Host: prod.immedia-semi.com" - H "TOKEN_AUTH: authtoken from login" --compressed https://prod.immedia-semi.com/network/*network_id_from_networks_call*/syncmodules
-// curl - H "Host: prod.immedia-semi.com" - H "TOKEN_AUTH: authtoken from login --data-binary "" --compressed https://prod.immedia-semi.com/network/*network_id_from_networks_call*/arm
-// curl - H "Host: prod.immedia-semi.com" - H "TOKEN_AUTH: authtoken from login" --data- binary "" --compressed https://prod.immedia-semi.com/network/*network_id_from_networks_call*/disarm
-// curl - H "Host: prod.immedia-semi.com" - H "TOKEN_AUTH: authtoken from login" --compressed https://prod.immedia-semi.com/network/*network_id*/command/*command_id*
-// curl - H "Host: prod.immedia-semi.com" - H "TOKEN_AUTH: authtoken from login" --compressed https://prod.immedia-semi.com/homescreen
-
-let authData = {};
-let syncState = {};
+// http://curl.trillworks.com/#node
 
 function login() {
 	const options = {
-		url: 'https://prod.immedia-semi.com/login',
+		url: `https://${hostname}/login`,
 		method: 'POST',
-		headers: {
-			'Host': 'prod.immedia-semi.com',
-			'Content-Type': 'application/json'
-		},
+		headers: { 'Host': hostname, 'Content-Type': 'application/json' },
 		body: JSON.stringify({
 			email: credentials.email,
 			password: credentials.password,
@@ -33,57 +22,33 @@ function login() {
 		})
 	};
 
-	return rp(options)
-		.then((body) => authData = JSON.parse(body))
-		.catch((error) => console.log("Failed: ", error));
+	return rp(options).then((body) => JSON.parse(body));
 }
 
-function getNetworks() {
+function getHomescreen(authData) {
 	const options = {
-		url: `https://prod.immedia-semi.com/networks`,
-		method: 'POST',
-		headers: {
-			'Host': 'prod.immedia-semi.com',
-			'Content-Type': 'application/json',
-			'TOKEN_AUTH': authData.authtoken.authtoken
-		}
+		url: `https://${hostname}/homescreen`,
+		headers: { 'Host': hostname, 'TOKEN_AUTH': authData.authtoken.authtoken }
 	};
 
-	return rp(options)
-		.then((body) => console.log("getnetworks: ", body))
-		.catch((error) => console.log("Failed: ", error));
+	return rp(options).then((body) => [authData, JSON.parse(body)]);
 }
 
-
-function getSyncModules() {
-	const networkID = Object.keys(authData.networks)[0];
-
+function toggleArm(data) {
+	const networkID = Object.keys(data[0].networks)[0];
+	const url = data[1].network.armed ? `https://${hostname}/network/${networkID}/disarm` : `https://${hostname}/network/${networkID}/arm`;
 	const options = {
-		url: `https://prod.immedia-semi.com/network/${networkID}/syncmodules`,
+		url: url,
 		method: 'POST',
-		headers: {
-			'Host': 'prod.immedia-semi.com',
-			'Content-Type': 'application/json',
-			'TOKEN_AUTH': authData.authtoken.authtoken
-		}
+		headers: { 'Host': hostname, 'TOKEN_AUTH': data[0].authtoken.authtoken }
 	};
 
-	return rp(options)
-		.then((body) => syncState = JSON.parse(body))
-		.catch((error) => console.log("Failed: ", error));
+	return rp(options).then((body) => JSON.parse(body));
 }
 
-
+// Login, get the current status, and either arm or disarm the system
 login()
-	.then(() => {
-		console.log("done here");
-		return getNetworks();
-	})
-	.then(() => {
-		console.log("authData => ", authData);
-		return getSyncModules();
-	})
-	.catch((error) => console.log("Couldn't get syncmodules: ", error))
-	.then(() => console.log(syncState));
-	// .then(() => toggleArm())
-	// .catch((error) => console.log("Toggle arm failed: ", error));
+	.then((authData) => getHomescreen(authData))
+	.then((data) => toggleArm(data))
+	.then((toggleResult) => console.log(`System has been ${toggleResult.command}ed`))
+	.catch((error) => console.log("Error: ", error));
