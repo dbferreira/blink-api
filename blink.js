@@ -46,9 +46,14 @@ function toggleArm(data) {
 	return rp(options).then((body) => JSON.parse(body));
 }
 
-// Login, get the current status, and either arm or disarm the system
-login()
-	.then((authData) => getHomescreen(authData))
-	.then((data) => toggleArm(data))
-	.then((toggleResult) => console.log(`System has been ${toggleResult.command}ed`))
-	.catch((error) => console.log("Error: ", error));
+module.exports = {
+	toggle: function () {
+		// Login, get the current status, and either arm or disarm the system
+		return login()
+			.then((authData) => getHomescreen(authData))
+			.then((data) => toggleArm(data))
+			.then((toggleResult) => `System has been ${toggleResult.command}ed`)
+			.catch((error) => `Error: ${error}`);
+	}
+};
+
